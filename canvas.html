@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Hello Canvas</title>
+</head>
+<body>
+    <canvas id="myCanvas" width="800" height="800">
+        your browser doesn't support canvas!
+    </canvas>
+    <script>
+        function drawRect(ctx)
+        {
+            //ctx.fillRect(0,0,150,75);
+            ctx.rect(0,0,150,75);
+            ctx.stroke();
+        }
+        function drawLine(ctx)
+        {
+            ctx.moveTo(0,0);
+            ctx.lineTo(200,100);
+            ctx.stroke();
+        }
+        function drawCircle(ctx)
+        {
+            ctx.beginPath();
+            var x = 95; //the center point
+            var y = 50;
+            var radius = 40;//the length of radius
+            var startAngle = 0;
+            var endAngle = 2*Math.PI;
+            var counterClockwise = 1;
+            ctx.arc(x, y, radius, startAngle, endAngle, counterClockwise);
+            //ctx.stroke();
+            ctx.fill();
+        }
+        function drawText(ctx)
+        {
+            ctx.font = "30px Arial";
+            ctx.fillText("Hello World",10,50);
+            ctx.strokeText("Hello World",10,100);
+        }
+        function drawImage(ctx)
+        {
+            var image = new Image();
+            image.src = "http://www.baidu.com/img/baidu_sylogo1.gif";
+            image.onload = function()
+            {
+                ctx.drawImage(image,100,100);
+            }
+        }
+        var c = document.getElementById("myCanvas");
+        var ctx = c.getContext("2d");
+        var ctx3d = c.getContext("webgl");
+        ctx.fillStyle = "#ff0000";
+        ctx.strokeStyle = "#00ff00";
+        ctx.lineWidth = 5;
+        drawRect(ctx);
+        drawLine(ctx);
+        drawCircle(ctx);
+        drawText(ctx);
+        ctx.translate(10,100);
+        drawText(ctx);
+        drawImage(ctx);
+    </script>
+</body>
+</html>
