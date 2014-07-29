@@ -147,7 +147,7 @@
                     if(chesses[i].type == ChessTypeEmpty) allAvail.push(i);
                 }
                 var i = Math.random()*allAvail.length;
-                i = Math.trunc(i);
+                i = Math.floor(i);
                 return KingoJS.Promise.timeout(PlayTimer).then(function(){return allAvail[i];});
             }
         }
@@ -285,6 +285,10 @@
                 }
                 console.log("max "+maxValue);
                 return KingoJS.Promise.timeout(PlayTimer).then(function(){return chessId;});
+            },
+            afterGame:function(game)
+            {
+                this.learn(game.chessHistory, game.winner);
             }
         }
     );
@@ -312,6 +316,10 @@
                 this.p = new KingoJS.Promise();
                 this.state = "wait";
                 return this.p;
+            },
+            beforeGame:function(game)
+            {
+                game.board.addListener(this.onChessClick.bind(this));
             }
         }
     );
@@ -336,6 +344,8 @@
                 this.board.draw();
                 if(this.isFinished())
                 {
+                    this.players[0].afterGame && this.players[0].afterGame(this);
+                    this.players[1].afterGame && this.players[1].afterGame(this);
                     this.p.resolve(this);
                 }
                 else
@@ -356,6 +366,10 @@
             },
             play:function()
             {
+                this.board.reset();
+                this.board.draw();
+                this.players[0].beforeGame && this.players[0].beforeGame(this);
+                this.players[1].beforeGame && this.players[1].beforeGame(this);
                 this.p = new KingoJS.Promise();
                 this.nextStep();
                 return this.p;
@@ -410,226 +424,118 @@
     var cnt=0;
     var status = [0, 0, 0];
     var allGamesPlayedPromise;
-    function oneGamePlayed(game)
+    var aiPlayer = [new PlayAi(), new PlayAi()];
+    var autoPlayer = [new PlayAuto(), new PlayAuto()];
+    var humanPlayer = [new PlayHuman(), new PlayHuman()];
+    function getPlayer(select, name)
     {
-        var winner = game.winner;
+        if(name == "Random")
+        {
+            return autoPlayer[select];
+        }
+        else if(name == "Human")
+        {
+            return humanPlayer[select];
+        }
+        else if(name == "AI")
+        {
+            return aiPlayer[select];
+        }
+    }
+    function getMsg(winner)
+    {
         var msg;
         if(winner == PlayRoleBlack)
         {
             msg="Black Win!";   
-            status[0]++;
         }
         else if(winner == PlayRoleWhite)
         {
             msg = "White Win!";
-            status[1]++;
         }
         else
         {
-            status[2]++;
-            msg = "Tie!";   
+            msg = "Tie!";
         }
-        cnt++;
-        console.log(cnt + " games played");
-        if(cnt < total)
-        {
-            board.reset();
-            board.draw();
-            new Game(new PlayAuto(),new PlayAuto(),board).play().then(oneGamePlayed);   
-        }
-        else allGamesPlayedPromise.resolve();
+        return msg;
     }
-    function autoTest()
+    function runGames(player0, player1)
     {
-        allGamesPlayedPromise = new KingoJS.Promise();
-        board.reset();
-        board.draw();
-        var game = new Game(new PlayAuto(), new PlayAuto(),board);
-        game.play().then(oneGamePlayed);
-        return allGamesPlayedPromise;
-    }
-    function autoTestClicked()
-    {
-		var btnAuto = document.getElementById("btnAuto");
-        btnAuto.disabled = true;
-        status = [0, 0, 0];
-        cnt = 0;
-        autoTest().then(function()
-        {
-            btnAuto.disabled = false;
-            alert(status[0]+" "+status[1]+" "+status[2]);
-        });
-    }
-    function btnHumanClicked()
-    {
-        board.reset();
-        board.draw();
-        board.addListener(humanLeftPlayer.onChessClick.bind(humanLeftPlayer));
-        var game = new Game(humanLeftPlayer, autoRightPlayer, board);
-        game.play().then(function(game)
+        function oneGameRun(game)
         {
             var winner = game.winner;
-            var msg;
             if(winner == PlayRoleBlack)
             {
-                msg="Black Win!";   
+                status[0]++;
             }
             else if(winner == PlayRoleWhite)
             {
-                msg = "White Win!";
+                status[1]++;
             }
             else
             {
-                msg = "Tie!";
+                status[2]++;
             }
+            cnt++;
+            console.log(cnt + " games run");
+            if(cnt < total)
+            {
+                new Game(game.players[0],game.players[1],board).play().then(oneGameRun);   
+            }
+            else allGamesPlayedPromise.resolve();
+        }
+
+        allGamesPlayedPromise = new KingoJS.Promise();
+        var game = new Game(player0, player1, board);
+        game.play().then(oneGameRun);
+        return allGamesPlayedPromise;
+    }
+    function setParamAndGetPlayers()
+    {
+        var delay = document.getElementById("selDelay").value;
+        PlayTimer = parseInt(delay);
+        total = parseInt(document.getElementById("txtTotal").value);
+        var name0 = document.getElementById("selLeft").value;
+        var name1 = document.getElementById("selRight").value;
+        var player0 = getPlayer(0, name0);
+        var player1 = getPlayer(1, name1);
+        return [player0, player1];
+    }
+    function inRunning()
+    {
+        var btnPlay = document.getElementById("btnPlay");
+        var btnRun = document.getElementById("btnRun");
+        btnPlay.disabled = true;
+        btnRun.disabled = true;
+    }
+    function afterRunning()
+    {
+        var btnPlay = document.getElementById("btnPlay");
+        var btnRun = document.getElementById("btnRun");
+        btnPlay.disabled = false;
+        btnRun.disabled = false;
+    }
+    function btnPlayClicked()
+    {
+        inRunning();
+        var players = setParamAndGetPlayers();
+        var game = new Game(players[0],players[1],board);
+        game.play().then(function(game)
+        {
+            var msg = getMsg(game.winner);
             alert(msg);
+            afterRunning();
         });
     }
-    function btnAiClicked()
+    function btnRunClicked()
     {
-        board.reset();
-        board.draw();
-        board.addListener(humanLeftPlayer.onChessClick.bind(humanLeftPlayer));
-        var game = new Game(humanLeftPlayer, aiRightPlayer, board);
-        game.play().then(function(game)
-        {
-            var winner = game.winner;
-            aiRightPlayer.learn(game.chessHistory, winner);
-            var msg;
-            if(winner == PlayRoleBlack)
-            {
-                msg="Black Win!";   
-            }
-            else if(winner == PlayRoleWhite)
-            {
-                msg = "White Win!";
-            }
-            else
-            {
-                msg = "Tie!";
-            }
-            console.log(msg);
-            //alert(msg);
-        });
-    }
-    var aiLeftPlayer = new PlayAi();
-    var aiRightPlayer = new PlayAi();
-    var autoLeftPlayer = new PlayAuto();
-    var autoRightPlayer = new PlayAuto();
-    var humanLeftPlayer = new PlayHuman();
-    var humanRightPlayer = new PlayHuman();
-    function ranVsAiOneGamePlayed(game)
-    {
-        var winner = game.winner;
-        var msg;
-        if(winner == PlayRoleBlack)
-        {
-            msg="Black Win!";   
-            status[0]++;
-        }
-        else if(winner == PlayRoleWhite)
-        {
-            msg = "White Win!";
-            status[1]++;
-        }
-        else
-        {
-            status[2]++;
-            msg = "Tie!";   
-        }
-        cnt++;
-        console.log(cnt + " games played");
-        aiRightPlayer.learn(game.chessHistory,winner);
-        console.log(aiRightPlayer.w.join());
-        if(cnt < total)
-        {
-            board.reset();
-            board.draw();
-            new Game(autoLeftPlayer,aiRightPlayer,board).play().then(ranVsAiOneGamePlayed);   
-        }
-        else allGamesPlayedPromise.resolve();
-    }
-    function ranVsAi()
-    {
-        allGamesPlayedPromise = new KingoJS.Promise();
-        board.reset();
-        var game = new Game(autoLeftPlayer, aiRightPlayer, board);
-        game.play().then(ranVsAiOneGamePlayed);
-        return allGamesPlayedPromise;
-    }
-    function btnRanAiClicked()
-    {
+        inRunning();
+        var players = setParamAndGetPlayers();
         cnt = 0;
         status = [0,0,0];
-        ranVsAi().then(function()
-        {
+        runGames(players[0], players[1]).then(function(){
             alert(status[0]+" "+status[1]+" "+status[2]);
-        });
-    }
-    function btnPlayCilicked()
-    {
-        var timer = document.getElementById("txtTimer").value;
-        PlayTimer = parseInt(timer);
-        total = parseInt(document.getElementById("txtTotal").value);
-        var left = document.getElementById("selLeft").value;
-        var right = document.getElementById("selRight").value;
-        var leftPlayer, rightPlayer;
-        board.reset();
-        board.draw();
-        if(left == "Random")
-        {
-            leftPlayer = autoLeftPlayer;
-        }
-        else if(left == "Human")
-        {
-            leftPlayer = humanLeftPlayer;
-            board.addListener(humanLeftPlayer.onChessClick.bind(humanLeftPlayer));
-        }
-        else if(left == "AI")
-        {
-            
-            leftPlayer = aiLeftPlayer;
-        }
-        if(right == "Random")
-        {
-            rightPlayer = autoRightPlayer;
-        }
-        else if(right == "Human")
-        {
-            rightPlayer = humanRightPlayer;
-            board.addListener(humanLeftPlayer.onChessClick.bind(humanLeftPlayer));
-        }
-        else if(right == "AI")
-        {
-            
-            rightPlayer = aiRightPlayer;
-        }
-        var game = new Game(leftPlayer,rightPlayer,board);
-        game.play().then(function(game)
-        {
-            if(leftPlayer == aiLeftPlayer)
-            {
-                aiLeftPlayer.learn(game.chessHistory, game.winner);
-            }
-            if(rightPlayer == aiRightPlayer)
-            {
-                aiRightPlayer.learn(game.chessHistory, game.winner);
-            }
-            var winner = game.winner;
-            var msg;
-            if(winner == PlayRoleBlack)
-            {
-                msg="Black Win!";   
-            }
-            else if(winner == PlayRoleWhite)
-            {
-                msg = "White Win!";
-            }
-            else
-            {
-                msg = "Tie!";
-            }
-            alert(msg);
+            afterRunning();
         });
     }
     window.document.addEventListener("DOMContentLoaded", function () {
@@ -647,19 +553,10 @@
                 board.onClick(x,y);
             }
         },false);
-		var btnAuto = document.getElementById("btnAuto");
-		btnAuto.addEventListener("click", autoTestClicked,false);
-		var btnHuman = document.getElementById("btnHuman");
-		btnHuman.addEventListener("click", btnHumanClicked,false);
-		var btnAi = document.getElementById("btnAi");
-		btnAi.addEventListener("click", btnAiClicked,false);
-		var btnRanAi = document.getElementById("btnRanAi");
-		btnRanAi.addEventListener("click", btnRanAiClicked,false);
         var btnPlay = document.getElementById("btnPlay");
-        btnPlay.addEventListener("click", btnPlayCilicked,false);
+        btnPlay.addEventListener("click", btnPlayClicked,false);
+        var btnRun = document.getElementById("btnRun");
+        btnRun.addEventListener("click", btnRunClicked,false);
+        //afterRunning();
     }, false);
-    /*
-    var testP = new PlayAi();
-    console.log(testP.getX([1,1,2,0,1,0,0,2,0]));
-    */
 })(window);
