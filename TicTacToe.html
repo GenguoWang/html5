@@ -2,14 +2,31 @@
 <html>
 <head>
     <meta charset="utf-8"/>
-    <title>Hello Canvas</title>
-    <script src="kingo.js"></script>
-    <script src="TicTacToe.js"></script>
+    <title>TicTacToe</title>
+    <script src="/js/kingo.js"></script>
+    <script src="/js/TicTacToe.js"></script>
 </head>
 <body>
-    <canvas id="myCanvas" width="800" height="800">
+    <canvas id="myCanvas" width="500" height="500">
         your browser doesn't support canvas!
     </canvas>
+    <button type="button" id="btnAuto">Auto Test</button>
+    <button type="button" id="btnHuman">Human vs Random</button>
+    <button type="button" id="btnAi">Human vs AI</button>
+    <button type="button" id="btnRanAi">Random vs AI</button>
+    <select id="selLeft">
+        <option>Human</option>
+        <option>Random</option>
+        <option>AI</option>
+    </select>
+    <select id="selRight">
+        <option>Human</option>
+        <option>Random</option>
+        <option>AI</option>
+    </select>
+    Timer:<input id="txtTimer" type="text" value="1"/>
+    Total:<input id="txtTotal" type="text" value="100"/>
+    <button id="btnPlay">Play</button>
 </body>
 </html>
 
